@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "257615843415",
+    "project_id": "smartscalex-7fdc3",
+    "storage_bucket": "smartscalex-7fdc3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:257615843415:android:7913f94ca07a1112891312",
+        "android_client_info": {
+          "package_name": "com.example.smartscalex"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDpiyfA_hyF9ureE9DecqSNhF8G9Qp5S8s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
