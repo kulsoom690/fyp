@@ -39,7 +39,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        MaterialPageRoute(builder: (_) => const MainDashboard ()),
       );
     } catch (e) {
       setState(() => _errorMessage = e.toString());

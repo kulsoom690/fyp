@@ -1,4 +1,28 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
+import 'package:sensors_plus/sensors_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+// Cyberpunk Color Scheme
+const _cyberBlue = Color(0xFF00F3FF);
+const _neonPink = Color(0xFFFF00C7);
+const _matrixGreen = Color(0xFF00FF9D);
+const _hudText = Color(0xFFE0E0E0);
+const _cyberBlack = Color(0xFF0A0A0F);
+const _cyberGradient = LinearGradient(
+  colors: [_cyberBlack, Color(0xFF1A1A2E)],
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+);
+
+enum CalibrationState {
+  initial,
+  measuringBase,
+  addWeight,
+  measuringWeight,
+  complete,
+}
 
 class CalibrationScreen extends StatefulWidget {
   const CalibrationScreen({super.key});
@@ -7,93 +31,100 @@ class CalibrationScreen extends StatefulWidget {
   State<CalibrationScreen> createState() => _CalibrationScreenState();
 }
 
-class _CalibrationScreenState extends State<CalibrationScreen> {
-  final double _referenceWeight = 100; // Grams
-  final List<double> _sensorReadings = [];
-  bool _isCalibrating = false;
+class _CalibrationScreenState extends State<CalibrationScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  List<double> _baseReadings = [];
+  List<double> _weightReadings = [];
+  CalibrationState _state = CalibrationState.initial;
+  double _calibrationFactor = 1.0;
+  final double _knownWeight = 100.0;
 
-  void _startCalibration() async {
-    setState(() => _isCalibrating = true);
-    _sensorReadings.clear();
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+  }
 
-    // Simulate sensor readings for calibration
-    for (int i = 0; i < 30; i++) {
-      if (!_isCalibrating) break;
-      setState(() => _sensorReadings.add(100 + i.toDouble())); // Dummy data
-      await Future.delayed(const Duration(milliseconds: 100));
+  Future<void> _startCalibration() async {
+    setState(() => _state = CalibrationState.measuringBase);
+    _baseReadings = await _collectSensorData();
+
+    setState(() => _state = CalibrationState.addWeight);
+    await Future.delayed(const Duration(seconds: 2));
+
+    setState(() => _state = CalibrationState.measuringWeight);
+    _weightReadings = await _collectSensorData();
+
+    _calculateCalibration();
+    await _saveCalibration();
+    setState(() => _state = CalibrationState.complete);
+  }
+
+  Future<List<double>> _collectSensorData() async {
+    final List<double> readings = [];
+    final stream = accelerometerEvents
+        .map((event) => event.x.abs() + event.y.abs() + event.z.abs())
+        .take(100);
+
+    await for (final value in stream) {
+      readings.add(value);
     }
+    return readings;
+  }
 
-    setState(() => _isCalibrating = false);
+  void _calculateCalibration() {
+    final baseAvg =
+        _baseReadings.reduce((a, b) => a + b) / _baseReadings.length;
+    final weightAvg =
+        _weightReadings.reduce((a, b) => a + b) / _weightReadings.length;
+    _calibrationFactor = (weightAvg - baseAvg) / _knownWeight;
+  }
 
-    final averageReading =
-        _sensorReadings.isEmpty
-            ? 0
-            : _sensorReadings.reduce((a, b) => a + b) / _sensorReadings.length;
-
-    final calibrationFactor = averageReading / _referenceWeight;
-
-    // Save calibration factor (Example Placeholder)
-    debugPrint('Calibration Factor: $calibrationFactor');
+  Future<void> _saveCalibration() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('calibration_factor', _calibrationFactor);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Calibration'),
+        title: Text(
+          'Calibration',
+          style: TextStyle(
+            color: const Color.fromARGB(255, 61, 11, 11),
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            shadows: [
+              Shadow(color: _cyberBlue.withOpacity(0.4), blurRadius: 10),
+            ],
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back, color: _hudText),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: Container(
+        decoration: BoxDecoration(gradient: _cyberGradient),
+        child: Stack(
           children: [
-            Text(
-              'Calibration Guide',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              '1. Place a known weight (e.g., 100g object)\n'
-              '2. Ensure phone is on a flat surface\n'
-              '3. Keep still during calibration',
-              style: TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 40),
-            LinearProgressIndicator(
-              value:
-                  _isCalibrating
-                      ? null
-                      : _sensorReadings.isNotEmpty
-                      ? 1
-                      : 0,
-              backgroundColor: Colors.grey.shade800,
-              color: Colors.blueAccent,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Readings: ${_sensorReadings.length}',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const Spacer(),
-            ElevatedButton.icon(
-              icon:
-                  _isCalibrating
-                      ? const CircularProgressIndicator()
-                      : const Icon(Icons.adjust),
-              label: Text(
-                _isCalibrating ? 'Calibrating...' : 'Start Calibration',
-              ),
-              onPressed: _isCalibrating ? null : _startCalibration,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+            CustomPaint(painter: _CyberGridPainter()),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildVisualFeedback(),
+                  _buildInstructions(),
+                  _buildControls(),
+                ],
               ),
             ),
           ],
@@ -101,4 +132,316 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
       ),
     );
   }
+
+  Widget _buildVisualFeedback() {
+    return SizedBox(
+      height: 200,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 500),
+        child:
+            _state == CalibrationState.complete
+                ? _buildSuccessAnimation()
+                : _buildSensorAnimation(),
+      ),
+    );
+  }
+
+  Widget _buildSensorAnimation() {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return CustomPaint(
+          painter: _CyberCalibrationPainter(
+            animationValue: _controller.value,
+            isMeasuring:
+                _state == CalibrationState.measuringBase ||
+                _state == CalibrationState.measuringWeight,
+          ),
+          size: const Size(double.infinity, 200),
+        );
+      },
+    );
+  }
+
+  Widget _buildSuccessAnimation() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Lottie.asset(
+            'assets/Animation - 1742578000459.json',
+            width: 100,
+            repeat: false,
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _matrixGreen.withOpacity(0.2)),
+            ), // Added missing closing parenthesis here
+            child: Text(
+              'Calibration factor: ${_calibrationFactor.toStringAsFixed(2)}',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _matrixGreen,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                shadows: [
+                  Shadow(color: _matrixGreen.withOpacity(0.3), blurRadius: 10),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInstructions() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _cyberBlue.withOpacity(0.3)),
+        gradient: LinearGradient(
+          colors: [
+            Colors.black.withOpacity(0.3),
+            Colors.black.withOpacity(0.1),
+          ],
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            _getInstructionText(),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _hudText,
+              fontSize: 16,
+              height: 1.4,
+              fontWeight: FontWeight.w500,
+              shadows: [
+                Shadow(color: _cyberBlue.withOpacity(0.3), blurRadius: 10),
+              ],
+            ),
+          ),
+          if (_state == CalibrationState.measuringBase ||
+              _state == CalibrationState.measuringWeight)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Container(
+                height: 6,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.black.withOpacity(0.4),
+                ),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    gradient: LinearGradient(colors: [_cyberBlue, _neonPink]),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _cyberBlue.withOpacity(0.3),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _getInstructionText() {
+    switch (_state) {
+      case CalibrationState.initial:
+        return 'Place device on flat surface\nRemove all objects';
+      case CalibrationState.measuringBase:
+        return 'Measuring baseline...\nMaintain stillness';
+      case CalibrationState.addWeight:
+        return 'Apply known weight (${_knownWeight}g)\nTo device surface';
+      case CalibrationState.measuringWeight:
+        return 'Measuring load...\nDo not disturb';
+      case CalibrationState.complete:
+        return 'Calibration factor: ${_calibrationFactor.toStringAsFixed(2)}';
+    }
+  }
+
+  Widget _buildControls() {
+    return Column(
+      children: [
+        if (_state == CalibrationState.complete)
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: _matrixGreen.withOpacity(0.3),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 18,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: _matrixGreen, width: 2),
+                ),
+              ),
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                'Done',
+                style: TextStyle(
+                  color: _matrixGreen,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                  letterSpacing: 1.1,
+                ),
+              ),
+            ),
+          )
+        else
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                colors:
+                    _state == CalibrationState.initial
+                        ? [_cyberBlue, _neonPink]
+                        : [
+                          Colors.grey.withOpacity(0.2),
+                          Colors.grey.withOpacity(0.1),
+                        ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _cyberBlue.withOpacity(0.2),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 18,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon:
+                  _state == CalibrationState.initial
+                      ? Icon(Icons.tune, color: _hudText)
+                      : CircularProgressIndicator(color: _hudText),
+              label: Text(
+                _state == CalibrationState.initial
+                    ? 'Initiate Calibration'
+                    : 'Calibrating...',
+                style: TextStyle(
+                  color: _hudText,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  letterSpacing: 1.1,
+                ),
+              ),
+              onPressed:
+                  _state == CalibrationState.initial ? _startCalibration : null,
+            ),
+          ),
+      ],
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+}
+
+class _CyberCalibrationPainter extends CustomPainter {
+  final double animationValue;
+  final bool isMeasuring;
+
+  _CyberCalibrationPainter({
+    required this.animationValue,
+    required this.isMeasuring,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..shader = LinearGradient(
+            colors: [_cyberBlue, _neonPink],
+            stops: [0.3, 0.7],
+          ).createShader(Rect.fromLTRB(0, 0, size.width, size.height))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0
+          ..strokeCap = StrokeCap.round
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 4);
+
+    final path = Path();
+    final centerY = size.height / 2;
+
+    for (double x = 0; x < size.width; x++) {
+      final y =
+          centerY +
+          math.sin(x * 0.1 + animationValue * 2 * math.pi) *
+              (isMeasuring ? 20.0 : 5.0);
+
+      if (x == 0)
+        path.moveTo(x, y);
+      else
+        path.lineTo(x, y);
+    }
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+class _CyberGridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = _cyberBlue.withOpacity(0.05)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 0.8;
+
+    for (double x = 0; x < size.width; x += 40) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (double y = 0; y < size.height; y += 40) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
