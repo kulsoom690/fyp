@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:smartscalex/screens/dashboard/calibration_screen.dart';
+import 'package:smartscalex/screens/dashboard/calibration_screen.dart' show CalibrationScreen;
+import 'package:smartscalex/screens/dashboard/measurement_screen.dart' show SimulatedWeightScreen;
+
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 // Color Constants
@@ -127,8 +129,13 @@ class _MainDashboardState extends State<MainDashboard>
                         MaterialPageRoute(builder: (context) => CalibrationScreen()),
                       );
                     }),
-                    _buildActionCard(Icons.speed, 'Measure', () {}),
-                    _buildActionCard(Icons.fastfood, 'Food Scan', () {}),
+                    _buildActionCard(Icons.speed, 'Measure', () {
+                       Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => SimulatedWeightScreen()),
+                      );
+                    }),
+                    
                   ],
                 ),
               ),

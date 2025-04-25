@@ -22,11 +22,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       'title': 'Estimate calories',
       'desc': 'AI-powered food analysis with calorie estimates',
     },
-    {
-      'image': 'assets/image2.avif',
-      'title': 'Health fitness',
-      'desc': 'Detailed trends and progress visualization',
-    },
   ];
 
   // Modern color palette
@@ -56,18 +51,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       height: 8,
       width: _currentPage == index ? 24 : 8,
       decoration: BoxDecoration(
-        gradient: _currentPage == index
-            ? LinearGradient(
-                colors: [_accentColor, _accentColor.withOpacity(0.6)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
-            : LinearGradient(
-                colors: [
-                  _secondaryColor.withOpacity(0.4),
-                  _secondaryColor.withOpacity(0.2)
-                ],
-              ),
+        gradient:
+            _currentPage == index
+                ? LinearGradient(
+                  colors: [_accentColor, _accentColor.withOpacity(0.6)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+                : LinearGradient(
+                  colors: [
+                    _secondaryColor.withOpacity(0.4),
+                    _secondaryColor.withOpacity(0.2),
+                  ],
+                ),
         borderRadius: BorderRadius.circular(4),
       ),
     );
@@ -103,7 +99,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           height: 300,
                           decoration: BoxDecoration(
                             image: DecorationImage(
-                              image: AssetImage(_onboardingData[index]['image']!),
+                              image: AssetImage(
+                                _onboardingData[index]['image']!,
+                              ),
                               colorFilter: ColorFilter.mode(
                                 _textPrimary.withOpacity(0.1),
                                 BlendMode.overlay,
@@ -128,7 +126,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 color: _accentColor.withOpacity(0.1),
                                 blurRadius: 20,
                                 offset: const Offset(0, 4),
-                              )
+                              ),
                             ],
                           ),
                           textAlign: TextAlign.center,
@@ -154,7 +152,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 );
               },
             ),
-            
+
             Positioned(
               bottom: 40,
               left: 24,
@@ -188,7 +186,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             color: _accentColor.withOpacity(0.2),
                             blurRadius: 20,
                             spreadRadius: 2,
-                          )
+                          ),
                         ],
                       ),
                       child: ElevatedButton(
@@ -211,7 +209,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           }
                         },
                         child: Text(
-                          _currentPage == _onboardingData.length - 1 
+                          _currentPage == _onboardingData.length - 1
                               ? 'Get Started'
                               : 'Continue',
                           style: TextStyle(

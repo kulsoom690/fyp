@@ -63,13 +63,6 @@ class _SplashScreenState extends State<SplashScreen>
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Precision Health Metrics',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(color: Colors.blueGrey.shade300),
-            ),
           ],
         ),
       ),

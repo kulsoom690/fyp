@@ -90,6 +90,12 @@ class _CalibrationScreenState extends State<CalibrationScreen>
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -115,7 +121,7 @@ class _CalibrationScreenState extends State<CalibrationScreen>
         decoration: BoxDecoration(gradient: _cyberGradient),
         child: Stack(
           children: [
-            CustomPaint(painter: _CyberGridPainter()),
+            // Add a background grid or visual effect if needed
             Padding(
               padding: const EdgeInsets.all(24),
               child: Column(
@@ -150,14 +156,14 @@ class _CalibrationScreenState extends State<CalibrationScreen>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        return CustomPaint(
-          painter: _CyberCalibrationPainter(
-            animationValue: _controller.value,
-            isMeasuring:
+        return Center(
+          child: CircularProgressIndicator(
+            color:
                 _state == CalibrationState.measuringBase ||
-                _state == CalibrationState.measuringWeight,
+                        _state == CalibrationState.measuringWeight
+                    ? _neonPink
+                    : _cyberBlue,
           ),
-          size: const Size(double.infinity, 200),
         );
       },
     );
@@ -183,7 +189,7 @@ class _CalibrationScreenState extends State<CalibrationScreen>
               color: Colors.black.withOpacity(0.3),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: _matrixGreen.withOpacity(0.2)),
-            ), // Added missing closing parenthesis here
+            ),
             child: Text(
               'Calibration factor: ${_calibrationFactor.toStringAsFixed(2)}',
               textAlign: TextAlign.center,
@@ -230,33 +236,6 @@ class _CalibrationScreenState extends State<CalibrationScreen>
               ],
             ),
           ),
-          if (_state == CalibrationState.measuringBase ||
-              _state == CalibrationState.measuringWeight)
-            Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Container(
-                height: 6,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.black.withOpacity(0.4),
-                ),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    gradient: LinearGradient(colors: [_cyberBlue, _neonPink]),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _cyberBlue.withOpacity(0.3),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -273,7 +252,7 @@ class _CalibrationScreenState extends State<CalibrationScreen>
       case CalibrationState.measuringWeight:
         return 'Measuring load...\nDo not disturb';
       case CalibrationState.complete:
-        return 'Calibration factor: ${_calibrationFactor.toStringAsFixed(2)}';
+        return 'Calibration complete!\nFactor: ${_calibrationFactor.toStringAsFixed(2)}';
     }
   }
 
@@ -281,167 +260,57 @@ class _CalibrationScreenState extends State<CalibrationScreen>
     return Column(
       children: [
         if (_state == CalibrationState.complete)
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: _matrixGreen.withOpacity(0.3),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 18,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: BorderSide(color: _matrixGreen, width: 2),
-                ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 18),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: _matrixGreen, width: 2),
               ),
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'Done',
-                style: TextStyle(
-                  color: _matrixGreen,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  letterSpacing: 1.1,
-                ),
+            ),
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Done',
+              style: TextStyle(
+                color: _matrixGreen,
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
               ),
             ),
           )
         else
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                colors:
-                    _state == CalibrationState.initial
-                        ? [_cyberBlue, _neonPink]
-                        : [
-                          Colors.grey.withOpacity(0.2),
-                          Colors.grey.withOpacity(0.1),
-                        ],
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 18),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: _cyberBlue.withOpacity(0.2),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                ),
-              ],
             ),
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 18,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              icon:
-                  _state == CalibrationState.initial
-                      ? Icon(Icons.tune, color: _hudText)
-                      : CircularProgressIndicator(color: _hudText),
-              label: Text(
+            icon:
                 _state == CalibrationState.initial
-                    ? 'Initiate Calibration'
-                    : 'Calibrating...',
-                style: TextStyle(
-                  color: _hudText,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                  letterSpacing: 1.1,
-                ),
+                    ? Icon(Icons.tune, color: _hudText)
+                    : SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(color: _hudText),
+                    ),
+            label: Text(
+              _state == CalibrationState.initial
+                  ? 'Initiate Calibration'
+                  : 'Calibrating...',
+              style: TextStyle(
+                color: _hudText,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
               ),
-              onPressed:
-                  _state == CalibrationState.initial ? _startCalibration : null,
             ),
+            onPressed:
+                _state == CalibrationState.initial ? _startCalibration : null,
           ),
       ],
     );
   }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-}
-
-class _CyberCalibrationPainter extends CustomPainter {
-  final double animationValue;
-  final bool isMeasuring;
-
-  _CyberCalibrationPainter({
-    required this.animationValue,
-    required this.isMeasuring,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint =
-        Paint()
-          ..shader = LinearGradient(
-            colors: [_cyberBlue, _neonPink],
-            stops: [0.3, 0.7],
-          ).createShader(Rect.fromLTRB(0, 0, size.width, size.height))
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.0
-          ..strokeCap = StrokeCap.round
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 4);
-
-    final path = Path();
-    final centerY = size.height / 2;
-
-    for (double x = 0; x < size.width; x++) {
-      final y =
-          centerY +
-          math.sin(x * 0.1 + animationValue * 2 * math.pi) *
-              (isMeasuring ? 20.0 : 5.0);
-
-      if (x == 0)
-        path.moveTo(x, y);
-      else
-        path.lineTo(x, y);
-    }
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
-
-class _CyberGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint =
-        Paint()
-          ..color = _cyberBlue.withOpacity(0.05)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 0.8;
-
-    for (double x = 0; x < size.width; x += 40) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y < size.height; y += 40) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
