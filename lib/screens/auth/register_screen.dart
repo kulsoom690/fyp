@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../dashboard/dashboard_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -14,6 +15,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
+  final _nameController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
   String? _errorMessage;
@@ -30,22 +32,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _errorMessage = null;
     });
 
-    try {
-      await Auth().createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+    final UserCredential userCredential =
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      email: _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+    );
 
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MainDashboard ()),
-      );
-    } catch (e) {
-      setState(() => _errorMessage = e.toString());
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    final user = userCredential.user;
+    if (user == null) {
+      setState(() => _errorMessage = 'User creation failed');
+      return;
     }
+
+    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      'uid': user.uid,
+      'name': _nameController.text.trim(),
+      'email': _emailController.text.trim(),
+      'createdAt': FieldValue.serverTimestamp(),
+      'lastLogin': FieldValue.serverTimestamp(),
+    });
+
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const MainDashboard()),
+    );
+
+    if (mounted) setState(() => _isLoading = false);
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmController.dispose();
+    _nameController.dispose();
+    super.dispose();
   }
 
   @override
@@ -65,10 +87,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               children: [
                 ShaderMask(
-                  shaderCallback:
-                      (bounds) => LinearGradient(
-                        colors: [Colors.amber.shade400, Colors.orange.shade600],
-                      ).createShader(bounds),
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [Colors.amber.shade400, Colors.orange.shade600],
+                  ).createShader(bounds),
                   child: const Icon(
                     Icons.app_registration_rounded,
                     size: 100,
@@ -93,50 +114,43 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     key: _formKey,
                     child: Column(
                       children: [
-                        Text(
-                          'Create Account',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.indigo.shade800,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          '',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey.shade700,
-                            height: 1.4,
-                          ),
-                        ),
-                        const SizedBox(height: 30),
                         TextFormField(
-                          controller: _emailController,
+                          controller: _nameController,
                           decoration: InputDecoration(
                             prefixIcon: Icon(
-                              Icons.email_rounded,
-                              color: Colors.indigo.shade400,
-                            ),
-                            labelText: "Email Address",
-                            labelStyle: TextStyle(color: Colors.grey.shade600),
+                                Icons.person, color: Colors.indigo.shade400),
+                            labelText: "Full Name",
                             filled: true,
                             fillColor: Colors.grey.shade100,
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 18,
-                              horizontal: 20,
-                            ),
+                                borderRadius: BorderRadius.circular(15),
+                                borderSide: BorderSide.none),
                           ),
-                          validator:
-                              (value) =>
-                                  value!.isEmpty
-                                      ? 'Please enter your email'
-                                      : null,
+                          validator: (value) =>
+                              value!.isEmpty ? 'Please enter your name' : null,
+                        ),
+                        const SizedBox(height: 20),
+                        TextFormField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            prefixIcon: Icon(
+                                Icons.email, color: Colors.indigo.shade400),
+                            labelText: "Email Address",
+                            filled: true,
+                            fillColor: Colors.grey.shade100,
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(15),
+                                borderSide: BorderSide.none),
+                          ),
+                          validator: (value) {
+                            if (value!.isEmpty) return 'Please enter your email';
+                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                                .hasMatch(value)) {
+                              return 'Enter valid email';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 20),
                         TextFormField(
@@ -144,9 +158,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             prefixIcon: Icon(
-                              Icons.lock_outline_rounded,
-                              color: Colors.indigo.shade400,
-                            ),
+                                Icons.lock, color: Colors.indigo.shade400),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscurePassword
@@ -154,29 +166,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     : Icons.visibility,
                                 color: Colors.grey.shade600,
                               ),
-                              onPressed:
-                                  () => setState(
-                                    () => _obscurePassword = !_obscurePassword,
-                                  ),
+                              onPressed: () => setState(
+                                  () => _obscurePassword = !_obscurePassword),
                             ),
                             labelText: "Password",
-                            labelStyle: TextStyle(color: Colors.grey.shade600),
                             filled: true,
                             fillColor: Colors.grey.shade100,
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 18,
-                              horizontal: 20,
-                            ),
+                                borderRadius: BorderRadius.circular(15),
+                                borderSide: BorderSide.none),
                           ),
-                          validator:
-                              (value) =>
-                                  value!.length < 6
-                                      ? 'Minimum 6 characters required'
-                                      : null,
+                          validator: (value) {
+                            if (value!.isEmpty) return 'Please enter password';
+                            if (value.length < 8) return 'Minimum 8 characters';
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 20),
                         TextFormField(
@@ -184,22 +188,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
                             prefixIcon: Icon(
-                              Icons.lock_reset_rounded,
-                              color: Colors.indigo.shade400,
-                            ),
+                                Icons.lock_reset, color: Colors.indigo.shade400),
                             labelText: "Confirm Password",
-                            labelStyle: TextStyle(color: Colors.grey.shade600),
                             filled: true,
                             fillColor: Colors.grey.shade100,
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 18,
-                              horizontal: 20,
-                            ),
+                                borderRadius: BorderRadius.circular(15),
+                                borderSide: BorderSide.none),
                           ),
+                          validator: (value) {
+                            if (value != _passwordController.text) {
+                              return 'Passwords do not match';
+                            }
+                            return null;
+                          },
                         ),
                         if (_errorMessage != null)
                           Padding(
@@ -213,115 +215,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ),
                         const SizedBox(height: 30),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _handleRegistration,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.teal.shade600,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 5,
-                            ),
-                            child:
-                                _isLoading
-                                    ? const CircularProgressIndicator(
-                                      color: Colors.white,
-                                    )
-                                    : const Text(
-                                      'CREATE ACCOUNT',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1.2,
-                                        color: Colors.white,
-                                      ),
-                                    ),
+                        ElevatedButton(
+                          onPressed: _isLoading ? null : _handleRegistration,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal.shade600,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            elevation: 5,
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: RichText(
-                            text: TextSpan(
-                              text: 'Already have an account? ',
-                              style: TextStyle(color: Colors.grey.shade600),
-                              children: [
-                                TextSpan(
-                                  text: 'Sign In',
+                          child: _isLoading
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                              : const Text(
+                                  'CREATE ACCOUNT',
                                   style: TextStyle(
-                                    color: Colors.teal.shade700,
+                                    color: Colors.white,
                                     fontWeight: FontWeight.bold,
-                                    decoration: TextDecoration.underline,
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Divider(color: Colors.grey.shade400),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                              ),
-                              child: Text(
-                                'Or sign up with',
-                                style: TextStyle(
-                                  color: Colors.grey.shade600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Divider(color: Colors.grey.shade400),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            OutlinedButton.icon(
-                              icon: Image.asset(
-                                'assets/google.png',
-                                height: 20,
-                              ),
-                              label: const Text('Google'),
-                              onPressed: () {},
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.grey.shade800,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 20,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                            ),
-                            OutlinedButton.icon(
-                              icon: const Icon(Icons.phone_android_rounded,size: 20,),
-                              label: const Text('Mobile'),
-                              onPressed: () {},
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.grey.shade800,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 20,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),

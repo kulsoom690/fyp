@@ -38,8 +38,15 @@ dependencies:
   firebase_auth: ^5.5.1
   cloud_firestore: ^5.4.1 
   lottie: ^2.7.0
-  sensors_plus: ^3.1.0
+  sensors_plus: ^4.0.1
   provider: ^6.0.5
+
+  vibration: ^1.7.4
+
+  image_picker: ^1.0.4
+  
+  google_sign_in: ^6.2.1
+  flutter_facebook_auth: ^6.1.1
 
 
   
@@ -47,6 +54,7 @@ dependencies:
 
   fl_chart: ^0.63.0
   syncfusion_flutter_charts: ^28.2.12
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter

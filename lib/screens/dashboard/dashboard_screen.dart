@@ -1,20 +1,20 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:smartscalex/screens/dashboard/calibration_screen.dart' show CalibrationScreen;
-import 'package:smartscalex/screens/dashboard/measurement_screen.dart' show SimulatedWeightScreen;
-
+import 'package:smartscalex/screens/profile_screen.dart';
+import 'package:smartscalex/screens/dashboard/calibration_screen.dart';
+import 'package:smartscalex/screens/dashboard/measurement_screen.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
-// Color Constants
-const _primaryColor = Color(0xFF0A0E21);
-const _secondaryColor = Color(0xFF1A2E35);
-const _accentColor = Color(0xFF4ECDC4);
-const _textColor = Color(0xFFE0F2F1);
-const _mainGradient = LinearGradient(
-  colors: [_primaryColor, _secondaryColor],
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-);
+// Color Scheme
+const _gradientStart = Color(0xFF1A237E); // Colors.indigo.shade800
+const _gradientEnd = Color(0xFF8E24AA);   // Colors.purple.shade600
+const _containerColor = Color(0xF2FFFFFF); // White with 95% opacity
+const _inputFieldColor = Color(0xFFF5F5F5); // Light grey for input
+const _accentIndigo = Color(0xFF5C6BC0); // Colors.indigo.shade400
+const _accentTeal = Color(0xFF009688);   // Colors.teal.shade600
+const _errorRed = Color(0xFFD32F2F);     // Colors.red.shade700
+const _textPrimary = Colors.black87;
+const _textLight = Colors.white;
 
 class MainDashboard extends StatefulWidget {
   const MainDashboard({super.key});
@@ -23,10 +23,8 @@ class MainDashboard extends StatefulWidget {
   State<MainDashboard> createState() => _MainDashboardState();
 }
 
-class _MainDashboardState extends State<MainDashboard> 
-    with SingleTickerProviderStateMixin {
+class _MainDashboardState extends State<MainDashboard> with SingleTickerProviderStateMixin {
   late AnimationController _sensorAnimationController;
-  final List<double> _sensorData = List.generate(20, (i) => i + Random().nextDouble());
   final List<ChartData> _chartData = [];
 
   @override
@@ -36,7 +34,7 @@ class _MainDashboardState extends State<MainDashboard>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
-    
+
     _chartData.addAll([
       ChartData('Mon', 68.2),
       ChartData('Tue', 67.8),
@@ -60,28 +58,28 @@ class _MainDashboardState extends State<MainDashboard>
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              _secondaryColor.withOpacity(0.3),
-              _accentColor.withOpacity(0.1)
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: _containerColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _accentColor.withOpacity(0.2)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 32, color: _accentColor),
+            Icon(icon, size: 32, color: _accentIndigo),
             const SizedBox(height: 8),
-            Text(label, 
+            Text(
+              label,
               style: TextStyle(
-                color: _textColor.withOpacity(0.9),
-                fontSize: 12,
-                fontWeight: FontWeight.w500
-              )
+                color: _textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -89,193 +87,44 @@ class _MainDashboardState extends State<MainDashboard>
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(gradient: _mainGradient),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              AppBar(
-                title: Text('SmartScaleX Dashboard',
-                  style: TextStyle(
-                    color: _textColor,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 18
-                  )
-                ),
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                actions: [
-                  IconButton(
-                    icon: Icon(Icons.notifications, 
-                      color: _textColor.withOpacity(0.8)),
-                    onPressed: () {},
-                  ),
-                ],
-              ),
-              SizedBox(
-                height: 120,
-                child: GridView.count(
-                  crossAxisCount: 3,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  children: [
-                    _buildActionCard(Icons.scale, 'Calibrate', () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => CalibrationScreen()),
-                      );
-                    }),
-                    _buildActionCard(Icons.speed, 'Measure', () {
-                       Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => SimulatedWeightScreen()),
-                      );
-                    }),
-                    
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      _secondaryColor.withOpacity(0.6),
-                      _secondaryColor.withOpacity(0.3)
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _accentColor.withOpacity(0.2)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text('Sensor Activity',
-                      style: TextStyle(
-                        color: _textColor.withOpacity(0.9),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600
-                      )
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 100,
-                      child: CustomPaint(
-                        painter: _SensorWavePainter(
-                          data: _sensorData,
-                          animation: _sensorAnimationController,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard(
-                      title: 'Last Weight',
-                      value: '68.2 kg',
-                      icon: Icons.monitor_weight,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildStatCard(
-                      title: 'Calories Today',
-                      value: '2,340 kcal',
-                      icon: Icons.local_fire_department,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        _secondaryColor.withOpacity(0.6),
-                        _secondaryColor.withOpacity(0.3)
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: _accentColor.withOpacity(0.2)),
-                  ),
-                  child: SfCartesianChart(
-                    primaryXAxis: CategoryAxis(
-                      labelStyle: TextStyle(color: _textColor.withOpacity(0.7)),
-                    ),
-                    primaryYAxis: NumericAxis(
-                      labelStyle: TextStyle(color: _textColor.withOpacity(0.7)),
-                    ),
-                    series: <LineSeries<ChartData, String>>[
-                      LineSeries(
-                        dataSource: _chartData,
-                        xValueMapper: (ChartData data, _) => data.x,
-                        yValueMapper: (ChartData data, _) => data.y,
-                        color: _accentColor,
-                        markerSettings: const MarkerSettings(isVisible: true),
-                      )
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNavBar(),
-    );
-  }
-
-  Widget _buildStatCard({required String title, required String value, required IconData icon}) {
+  Widget _buildMetricCard(String title, String value, String unit, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            _secondaryColor.withOpacity(0.4),
-            _accentColor.withOpacity(0.1)
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _accentColor.withOpacity(0.2)),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: _accentColor, size: 28),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title,
-                style: TextStyle(
-                  color: _textColor.withOpacity(0.7),
-                  fontSize: 12,
-                )
-              ),
-              Text(value,
-                style: TextStyle(
-                  color: _textColor,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                )
-              ),
-            ],
+          Text(title,
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              )),
+          const SizedBox(height: 8),
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: value,
+                  style: TextStyle(
+                    color: _textPrimary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                TextSpan(
+                  text: ' $unit',
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -285,47 +134,164 @@ class _MainDashboardState extends State<MainDashboard>
   Widget _buildBottomNavBar() {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            _primaryColor.withOpacity(0.9),
-            _secondaryColor.withOpacity(0.9)
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        color: _containerColor.withOpacity(0.85),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 10,
+            offset: Offset(0, -4),
+          ),
+        ],
       ),
       child: BottomNavigationBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        selectedItemColor: _accentColor,
-        unselectedItemColor: _textColor.withOpacity(0.5),
+        selectedItemColor: _accentTeal,
+        unselectedItemColor: Colors.grey,
         currentIndex: 0,
-        items: [
-          BottomNavigationBarItem(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    _accentColor.withOpacity(0.2),
-                    _accentColor.withOpacity(0.05)
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(12)),
-              child: Icon(Icons.home)),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: 'History',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Analytics'),
+          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
         ],
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _gradientStart,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [_gradientStart, _gradientEnd],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                // Header AppBar
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'SmartScaleX',
+                      style: TextStyle(
+                        color: _textLight,
+                        fontSize: 26,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: _accentTeal, width: 2),
+                        ),
+                        child: const CircleAvatar(
+                          backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=3'),
+                          radius: 20,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Action Buttons
+                SizedBox(
+                  height: 120,
+                  child: GridView.count(
+                    crossAxisCount: 3,
+                    childAspectRatio: 1.2,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      _buildActionCard(Icons.tune, 'Calibrate', () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const CalibrationScreen()),
+                        );
+                      }),
+                      _buildActionCard(Icons.scale, 'Measure', () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => WeightMeasurementScreen()),
+                        );
+                      }),
+                      _buildActionCard(Icons.history, 'History', () {}),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Metrics
+                Row(
+                  children: [
+                    Expanded(child: _buildMetricCard('Weight', '68.2', 'kg', _accentTeal)),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildMetricCard('BMI', '22.5', 'kg/m²', _accentIndigo)),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Chart
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: _containerColor,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 10,
+                          offset: Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: SfCartesianChart(
+                      plotAreaBorderWidth: 0,
+                      primaryXAxis: CategoryAxis(),
+                      primaryYAxis: NumericAxis(),
+                      series: <LineSeries<ChartData, String>>[
+                        LineSeries<ChartData, String>(
+                          dataSource: _chartData,
+                          xValueMapper: (ChartData data, _) => data.x,
+                          yValueMapper: (ChartData data, _) => data.y,
+                          color: _accentTeal,
+                          width: 3,
+                          markerSettings: MarkerSettings(
+                            isVisible: true,
+                            color: _accentTeal,
+                            borderColor: Colors.white,
+                            borderWidth: 2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 }
@@ -335,39 +301,4 @@ class ChartData {
   final double y;
 
   ChartData(this.x, this.y);
-}
-
-class _SensorWavePainter extends CustomPainter {
-  final List<double> data;
-  final Animation<double> animation;
-
-  _SensorWavePainter({required this.data, required this.animation}) 
-    : super(repaint: animation);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke
-      ..shader = LinearGradient(
-        colors: [_accentColor, _accentColor.withOpacity(0.3)]
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
-
-    final path = Path();
-    final xStep = size.width / (data.length - 1);
-    final yScale = size.height / 2;
-
-    path.moveTo(0, yScale + data[0] * yScale);
-    for (int i = 1; i < data.length; i++) {
-      path.lineTo(
-        i * xStep,
-        yScale + data[i] * yScale * animation.value,
-      );
-    }
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

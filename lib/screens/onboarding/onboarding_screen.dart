@@ -8,63 +8,84 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends State<OnboardingScreen>
+    with TickerProviderStateMixin {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  final List<Map<String, String>> _onboardingData = [
+
+  late AnimationController _imageAnimController;
+  late Animation<Offset> _imageOffset;
+  late Animation<double> _imageFade;
+
+  final List<Map<String, String>> _slides = [
     {
       'image': 'assets/image2.png',
       'title': 'Precision Measurement',
-      'desc': 'sensor calibration for accurate weight tracking',
+      'desc': 'Sensor calibration for accurate\nweight tracking.',
     },
     {
       'image': 'assets/image.png',
-      'title': 'Estimate calories',
-      'desc': 'AI-powered food analysis with calorie estimates',
+      'title': 'AI Calorie Estimation',
+      'desc': 'AI-powered food analysis\nand calorie prediction.',
     },
   ];
 
-  // Modern color palette
-  final Color _primaryColor = const Color(0xFF0F172A); // Navy
-  final Color _secondaryColor = const Color(0xFF1E293B); // Dark slate
-  final Color _accentColor = const Color(0xFF7DD3FC); // Sky blue
-  final Color _textPrimary = const Color(0xFFF8FAFC); // Off-white
-  final Color _textSecondary = const Color(0xFF94A3B8); // Muted blue
+  @override
+  void initState() {
+    super.initState();
+    _imageAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+
+    _imageOffset = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _imageAnimController,
+      curve: Curves.easeOut,
+    ));
+
+    _imageFade = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _imageAnimController,
+        curve: Curves.easeOut,
+      ),
+    );
+
+    _imageAnimController.forward();
+  }
 
   @override
   void dispose() {
+    _imageAnimController.dispose();
     _pageController.dispose();
     super.dispose();
   }
 
-  void _navigateToAuth() {
+  void _goToLogin() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
   }
 
+  void _onPageChanged(int index) {
+    setState(() => _currentPage = index);
+    _imageAnimController.reset();
+    _imageAnimController.forward();
+  }
+
   Widget _buildIndicator(int index) {
+    bool isActive = index == _currentPage;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
-      margin: const EdgeInsets.symmetric(horizontal: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 6),
       height: 8,
-      width: _currentPage == index ? 24 : 8,
+      width: isActive ? 30 : 10,
       decoration: BoxDecoration(
-        gradient:
-            _currentPage == index
-                ? LinearGradient(
-                  colors: [_accentColor, _accentColor.withOpacity(0.6)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-                : LinearGradient(
-                  colors: [
-                    _secondaryColor.withOpacity(0.4),
-                    _secondaryColor.withOpacity(0.2),
-                  ],
-                ),
-        borderRadius: BorderRadius.circular(4),
+        color: isActive ? Colors.cyanAccent : Colors.white30,
+        borderRadius: BorderRadius.circular(20),
       ),
     );
   }
@@ -73,9 +94,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [_primaryColor, _secondaryColor],
+            colors: [Color(0xFF1A237E), Color(0xFF8E24AA)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -84,28 +105,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           children: [
             PageView.builder(
               controller: _pageController,
-              itemCount: _onboardingData.length,
-              onPageChanged: (int page) => setState(() => _currentPage = page),
+              itemCount: _slides.length,
+              onPageChanged: _onPageChanged,
               itemBuilder: (context, index) {
+                final slide = _slides[index];
                 return Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      AnimatedOpacity(
-                        duration: const Duration(milliseconds: 500),
-                        opacity: _currentPage == index ? 1 : 0,
-                        child: Container(
-                          height: 300,
-                          decoration: BoxDecoration(
-                            image: DecorationImage(
-                              image: AssetImage(
-                                _onboardingData[index]['image']!,
-                              ),
-                              colorFilter: ColorFilter.mode(
-                                _textPrimary.withOpacity(0.1),
-                                BlendMode.overlay,
-                              ),
+                      Expanded(
+                        child: SlideTransition(
+                          position: _imageOffset,
+                          child: FadeTransition(
+                            opacity: _imageFade,
+                            child: Image.asset(
+                              slide['image']!,
+                              height: 280,
+                              fit: BoxFit.contain,
                             ),
                           ),
                         ),
@@ -114,37 +131,35 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 500),
                         child: Text(
-                          _onboardingData[index]['title']!,
-                          key: ValueKey<int>(index),
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w600,
-                            color: _textPrimary,
-                            letterSpacing: -0.5,
+                          slide['title']!,
+                          key: ValueKey(slide['title']),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                             shadows: [
                               Shadow(
-                                color: _accentColor.withOpacity(0.1),
-                                blurRadius: 20,
-                                offset: const Offset(0, 4),
+                                blurRadius: 10,
+                                color: Colors.black45,
+                                offset: Offset(0, 2),
                               ),
                             ],
                           ),
-                          textAlign: TextAlign.center,
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      AnimatedOpacity(
+                      const SizedBox(height: 14),
+                      AnimatedSwitcher(
                         duration: const Duration(milliseconds: 500),
-                        opacity: _currentPage == index ? 1 : 0,
                         child: Text(
-                          _onboardingData[index]['desc']!,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: _textSecondary,
-                            height: 1.5,
-                            fontWeight: FontWeight.w400,
-                          ),
+                          slide['desc']!,
+                          key: ValueKey(slide['desc']),
                           textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            height: 1.6,
+                            color: Color(0xFFCBD5E1),
+                          ),
                         ),
                       ),
                     ],
@@ -153,6 +168,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               },
             ),
 
+            // Bottom Buttons & Indicators
             Positioned(
               bottom: 40,
               left: 24,
@@ -162,73 +178,51 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(
-                      _onboardingData.length,
-                      (index) => _buildIndicator(index),
+                      _slides.length,
+                      (i) => _buildIndicator(i),
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            _accentColor.withOpacity(0.9),
-                            _accentColor.withOpacity(0.6),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (_currentPage < _slides.length - 1) {
+                          _pageController.nextPage(
+                            duration: const Duration(milliseconds: 500),
+                            curve: Curves.easeInOut,
+                          );
+                        } else {
+                          _goToLogin();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.cyanAccent,
+                        elevation: 12,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _accentColor.withOpacity(0.2),
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ],
                       ),
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        onPressed: () {
-                          if (_currentPage < _onboardingData.length - 1) {
-                            _pageController.nextPage(
-                              duration: const Duration(milliseconds: 500),
-                              curve: Curves.easeInOut,
-                            );
-                          } else {
-                            _navigateToAuth();
-                          }
-                        },
-                        child: Text(
-                          _currentPage == _onboardingData.length - 1
-                              ? 'Get Started'
-                              : 'Continue',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: _primaryColor,
-                            letterSpacing: 0.5,
-                          ),
+                      child: Text(
+                        _currentPage == _slides.length - 1
+                            ? 'Get Started'
+                            : 'Continue',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black,
                         ),
                       ),
                     ),
                   ),
-                  if (_currentPage != _onboardingData.length - 1)
+                  if (_currentPage != _slides.length - 1)
                     TextButton(
-                      onPressed: _navigateToAuth,
-                      child: Text(
+                      onPressed: _goToLogin,
+                      child: const Text(
                         'Skip',
                         style: TextStyle(
-                          color: _textSecondary,
+                          color: Colors.white54,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
