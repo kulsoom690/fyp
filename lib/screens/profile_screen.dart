@@ -1,11 +1,12 @@
 import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:smartscalex/screens/auth/login._screen.dart' show LoginScreen;
-import 'package:smartscalex/services/imgbb_service.dart'; // ✅ make sure this file exists
+import 'package:provider/provider.dart';
+import 'package:smartscalex/screens/eiditableprofile.dart' show EditableProfileScreen;
+import 'package:smartscalex/services/imgbb_service.dart';
+import 'package:smartscalex/theme/theme_provider.dart' show ThemeProvider;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,12 +16,10 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  String? profileImageUrl;
   String? name;
   String? email;
-  String? profileImageUrl;
-  bool isLoading = true;
-
-  final TextEditingController _nameController = TextEditingController();
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -31,195 +30,119 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadUserData() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      final doc =
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .get();
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
       if (doc.exists) {
+        final data = doc.data()!;
         setState(() {
-          name = doc['name'];
-          email = doc['email'];
-          profileImageUrl =
-              doc['photoURL'] ?? 'https://i.pravatar.cc/150?img=3';
-          _nameController.text = name ?? '';
-          isLoading = false;
+          name = data['name'] ?? '';
+          email = data['email'] ?? '';
+          profileImageUrl = data['photoURL'] ?? 'https://i.pravatar.cc/150?img=3';
+          _isLoading = false;
         });
       }
     }
   }
 
-  Future<void> _changeProfileImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile == null) return;
-
-    final file = File(pickedFile.path);
-    final imageUrl = await ImgBBService.uploadImage(file);
-
-    if (imageUrl != null) {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid != null) {
-        await FirebaseFirestore.instance.collection('users').doc(uid).update({
-          'photoURL': imageUrl,
-        });
-
-        await FirebaseAuth.instance.currentUser!.updatePhotoURL(imageUrl);
-
-        setState(() {
-          profileImageUrl = imageUrl;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Profile image updated')),
-        );
-      }
-    }
-  }
-
-  Future<void> _updateName() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid != null && _nameController.text.isNotEmpty) {
-      await FirebaseFirestore.instance.collection('users').doc(uid).update({
-        'name': _nameController.text,
-      });
-
-      setState(() {
-        name = _nameController.text;
-      });
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('✅ Name updated')));
-    }
+  void _navigateToEditProfile() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const EditableProfileScreen()),
+    );
+    _loadUserData(); // Refresh after edit
   }
 
   Future<void> _logout() async {
     await FirebaseAuth.instance.signOut();
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
+    if (context.mounted) {
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    }
+  }
+
+  Widget _buildListTile(IconData icon, String title, VoidCallback onTap, {Color? iconColor}) {
+    return ListTile(
+      leading: Icon(icon, color: iconColor ?? Colors.purple),
+      title: Text(title),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: onTap,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return Scaffold(
-      body:
-          isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF1A237E), Color(0xFF8E24AA)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24.0,
-                      vertical: 20,
-                    ),
-                    child: Column(
+      appBar: AppBar(
+        title: const Text("Profile"),
+        actions: [
+          Switch(
+            value: themeProvider.isDarkMode,
+            onChanged: (val) => themeProvider.toggleTheme(val),
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Center(
+                    child: Stack(
                       children: [
-                        GestureDetector(
-                          onTap: _changeProfileImage,
-                          child: Stack(
-                            children: [
-                              CircleAvatar(
-                                radius: 60,
-                                backgroundImage: NetworkImage(
-                                  profileImageUrl ?? '',
-                                ),
-                              ),
-                              Positioned(
-                                bottom: 0,
-                                right: 0,
-                                child: CircleAvatar(
-                                  radius: 18,
-                                  backgroundColor: Colors.teal,
-                                  child: const Icon(
-                                    Icons.edit,
-                                    size: 18,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                        CircleAvatar(
+                          radius: 60,
+                          backgroundImage: NetworkImage(profileImageUrl!),
                         ),
-                        const SizedBox(height: 20),
-                        TextField(
-                          controller: _nameController,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            labelText: 'Name',
-                            labelStyle: const TextStyle(color: Colors.white),
-                            filled: true,
-                            fillColor: Colors.white10,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          readOnly: true,
-                          controller: TextEditingController(text: email ?? ''),
-                          style: const TextStyle(color: Colors.white70),
-                          decoration: InputDecoration(
-                            labelText: 'Email',
-                            labelStyle: const TextStyle(color: Colors.white70),
-                            filled: true,
-                            fillColor: Colors.white10,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        ElevatedButton.icon(
-                          onPressed: _updateName,
-                          icon: const Icon(Icons.save),
-                          label: const Text('Update Name'),
-                          style: ElevatedButton.styleFrom(
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: CircleAvatar(
+                            radius: 18,
                             backgroundColor: Colors.teal,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 30,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        ElevatedButton.icon(
-                          onPressed: _logout,
-                          icon: const Icon(Icons.logout),
-                          label: const Text('Logout'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade600,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 30,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            child: const Icon(Icons.edit, color: Colors.white, size: 18),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
+                  const SizedBox(height: 10),
+                  Text(
+                    name ?? '',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  Text(
+                    email ?? '',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                  ),
+                  TextButton(
+                    onPressed: _navigateToEditProfile,
+                    child: const Text("Edit Profile", style: TextStyle(color: Colors.blue)),
+                  ),
+                  const Divider(height: 30),
+                  _buildListTile(Icons.favorite, 'Favourites', () {}),
+                  _buildListTile(Icons.download, 'Downloads', () {}),
+                  const Divider(),
+                  _buildListTile(Icons.language, 'Languages', () {}),
+                  _buildListTile(Icons.location_on, 'Location', () {}),
+                  _buildListTile(Icons.subscriptions, 'Subscription', () {}),
+                  _buildListTile(Icons.display_settings, 'Display', () {}),
+                  const Divider(),
+                  _buildListTile(Icons.delete, 'Clear Cache', () {}),
+                  _buildListTile(Icons.history, 'Clear History', () {}),
+                  const Divider(),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16.0),
+                    child: _buildListTile(
+                      Icons.logout,
+                      'Logout',
+                      _logout,
+                      iconColor: Colors.red,
+                    ),
+                  ),
+                ],
               ),
+            ),
     );
   }
 }
